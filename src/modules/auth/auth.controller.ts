@@ -119,6 +119,10 @@ export const login = async (req: Request, res: Response): Promise<any> => {
 // [POST] ĐĂNG XUẤT
 export const logout = (req: Request, res: Response) => {
   // Xóa cookie chứa token
-  res.clearCookie("access_token");
+  res.clearCookie("access_token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
   res.status(200).json({ message: "Đăng xuất thành công" });
 };
