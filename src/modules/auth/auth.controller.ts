@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { PrismaClient } from "../../../generated/prisma/client.js";
+import { PrismaClient } from "../../generated/prisma/client.js";
 
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
