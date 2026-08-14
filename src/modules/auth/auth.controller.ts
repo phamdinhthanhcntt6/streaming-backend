@@ -13,7 +13,7 @@ const prisma = new PrismaClient({ adapter });
 const JWT_SECRET = process.env.JWT_SECRET || "default_secret";
 
 // [POST] ĐĂNG KÝ
-export const register = async (req: Request, res: Response): Promise<any> => {
+export const register = async (req: Request, res: Response) => {
   try {
     const { email, password, displayName } = req.body;
 
@@ -21,13 +21,13 @@ export const register = async (req: Request, res: Response): Promise<any> => {
     if (!email || !password || !displayName) {
       return res
         .status(400)
-        .json({ message: "Vui lòng điền đầy đủ thông tin" });
+        .json({ message: "Please provide all required information" });
     }
 
     // 2. Kiểm tra xem email đã tồn tại trong DB chưa
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      return res.status(409).json({ message: "Email này đã được sử dụng" });
+      return res.status(409).json({ message: "This email is already in use" });
     }
 
     // 3. Mã hóa mật khẩu (Băm 10 vòng)
@@ -44,26 +44,26 @@ export const register = async (req: Request, res: Response): Promise<any> => {
     });
 
     res.status(201).json({
-      message: "Đăng ký thành công!",
+      message: "Registration successful!",
       user: {
         id: newUser.id,
         email: newUser.email,
         displayName: newUser.displayName,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(error);
     res
       .status(500)
       .json({
-        message: "Lỗi server khi đăng ký",
-        error: error?.message || String(error),
+        message: "Server error during registration",
+        error: error instanceof Error ? error.message : String(error),
       });
   }
 };
 
 // [POST] ĐĂNG NHẬP
-export const login = async (req: Request, res: Response): Promise<any> => {
+export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
@@ -71,7 +71,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
     if (!email || !password) {
       return res
         .status(400)
-        .json({ message: "Vui lòng nhập email và mật khẩu" });
+        .json({ message: "Please enter your email and password" });
     }
 
     // 2. Tìm User trong Database
@@ -79,7 +79,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
     if (!user || !user.password) {
       return res
         .status(401)
-        .json({ message: "Email hoặc mật khẩu không chính xác" });
+        .json({ message: "Incorrect email or password" });
     }
 
     // 3. So sánh mật khẩu người dùng nhập với mật khẩu đã băm trong DB
@@ -87,7 +87,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
     if (!isMatch) {
       return res
         .status(401)
-        .json({ message: "Email hoặc mật khẩu không chính xác" });
+        .json({ message: "Incorrect email or password" });
     }
 
     // 4. Tạo JWT Token
@@ -106,13 +106,13 @@ export const login = async (req: Request, res: Response): Promise<any> => {
     });
 
     res.status(200).json({
-      message: "Đăng nhập thành công",
+      message: "Login successful",
       user: { id: user.id, email: user.email, displayName: user.displayName },
       accessToken: token,
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Lỗi server khi đăng nhập" });
+    res.status(500).json({ message: "Server error during login" });
   }
 };
 
@@ -124,5 +124,5 @@ export const logout = (req: Request, res: Response) => {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
   });
-  res.status(200).json({ message: "Đăng xuất thành công" });
+  res.status(200).json({ message: "Logout successful" });
 };
