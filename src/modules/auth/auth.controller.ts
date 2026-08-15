@@ -108,7 +108,6 @@ export const login = async (req: Request, res: Response) => {
     res.status(200).json({
       message: "Login successful",
       user: { id: user.id, email: user.email, displayName: user.displayName },
-      accessToken: token,
     });
   } catch (error) {
     console.error(error);
@@ -125,4 +124,28 @@ export const logout = (req: Request, res: Response) => {
     sameSite: "lax",
   });
   res.status(200).json({ message: "Logout successful" });
+};
+
+// [GET] CURRENT USER
+export const me = async (_req: Request, res: Response) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: res.locals.userId as string },
+      select: {
+        id: true,
+        email: true,
+        displayName: true,
+        avatarUrl: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(401).json({ message: "User no longer exists" });
+    }
+
+    return res.status(200).json({ user });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Unable to load current user" });
+  }
 };
