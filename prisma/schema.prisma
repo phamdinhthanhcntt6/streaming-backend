@@ -18,4 +18,254 @@ model User {
   avatarPublicId String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  favoriteTracks FavoriteTrack[]
+  playHistory    PlayHistory[]
+}
+
+/// A person or group that can perform, compose, produce, or write a track.
+model Artist {
+  id             String   @id @default(uuid())
+  name           String
+  slug           String   @unique
+  bio            String?
+  avatarUrl      String?
+  avatarPublicId String?
+  countryCode    String?
+  isVerified     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  trackCredits TrackCredit[]
+  albums       AlbumArtist[]
+  chartEntries ChartEntry[]
+
+  @@index([name])
+}
+
+model Album {
+  id            String    @id @default(uuid())
+  title         String
+  slug          String    @unique
+  type          AlbumType @default(ALBUM)
+  description   String?
+  coverUrl      String?
+  coverPublicId String?
+  releaseDate   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  artists AlbumArtist[]
+  tracks  Track[]
+
+  @@index([title])
+  @@index([releaseDate])
+}
+
+model Track {
+  id            String      @id @default(uuid())
+  title         String
+  slug          String      @unique
+  description   String?
+  durationMs    Int
+  trackNumber   Int?
+  discNumber    Int         @default(1)
+  audioUrl      String
+  audioPublicId String?
+  coverUrl      String?
+  coverPublicId String?
+  lyrics        String?
+  releaseDate   DateTime?
+  status        TrackStatus @default(DRAFT)
+  playCount     Int         @default(0)
+  albumId       String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  album        Album?          @relation(fields: [albumId], references: [id], onDelete: SetNull)
+  credits      TrackCredit[]
+  genres       TrackGenre[]
+  favorites    FavoriteTrack[]
+  playHistory  PlayHistory[]
+  chartEntries ChartEntry[]
+
+  @@unique([albumId, discNumber, trackNumber])
+  @@index([title])
+  @@index([status, releaseDate])
+  @@index([playCount])
+}
+
+/// Connects an artist to an album and preserves display order.
+model AlbumArtist {
+  albumId  String
+  artistId String
+  role     AlbumArtistRole @default(PRIMARY_ARTIST)
+  position Int             @default(0)
+
+  album  Album  @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  artist Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@id([albumId, artistId, role])
+  @@index([artistId])
+}
+
+/// Supports primary artists, featured artists, composers, producers, and lyricists.
+model TrackCredit {
+  trackId  String
+  artistId String
+  role     CreditRole
+  position Int        @default(0)
+
+  track  Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  artist Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@id([trackId, artistId, role])
+  @@index([artistId, role])
+  @@index([trackId, role, position])
+}
+
+model Genre {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tracks TrackGenre[]
+  charts Chart[]
+}
+
+model TrackGenre {
+  trackId String
+  genreId String
+
+  track Track @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  genre Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([trackId, genreId])
+  @@index([genreId])
+}
+
+model FavoriteTrack {
+  userId    String
+  trackId   String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track Track @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@id([userId, trackId])
+  @@index([trackId])
+  @@index([userId, createdAt])
+}
+
+model PlayHistory {
+  id         String   @id @default(uuid())
+  userId     String
+  trackId    String
+  progressMs Int      @default(0)
+  completed  Boolean  @default(false)
+  playedAt   DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track Track @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@index([userId, playedAt])
+  @@index([trackId, playedAt])
+}
+
+/// Defines a leaderboard, such as Hot Trending, Top Artists, or Top Composers.
+model Chart {
+  id        String       @id @default(uuid())
+  name      String
+  slug      String       @unique
+  subject   ChartSubject
+  genreId   String?
+  isActive  Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  genre     Genre?          @relation(fields: [genreId], references: [id], onDelete: SetNull)
+  snapshots ChartSnapshot[]
+
+  @@index([subject, genreId, isActive])
+}
+
+/// One immutable chart result for a day, week, or month.
+model ChartSnapshot {
+  id          String      @id @default(uuid())
+  chartId     String
+  period      ChartPeriod
+  periodStart DateTime
+  periodEnd   DateTime
+  generatedAt DateTime    @default(now())
+
+  chart   Chart        @relation(fields: [chartId], references: [id], onDelete: Cascade)
+  entries ChartEntry[]
+
+  @@unique([chartId, period, periodStart])
+  @@index([chartId, period, periodStart])
+}
+
+/// For TRACK charts set trackId; for ARTIST/COMPOSER charts set artistId.
+/// The service layer must ensure exactly one target is set based on Chart.subject.
+model ChartEntry {
+  id             String  @id @default(uuid())
+  snapshotId     String
+  trackId        String?
+  artistId       String?
+  rank           Int
+  previousRank   Int?
+  peakRank       Int
+  periodsOnChart Int     @default(1)
+  score          Float   @default(0)
+
+  snapshot ChartSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  track    Track?        @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  artist   Artist?       @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@unique([snapshotId, rank])
+  @@unique([snapshotId, trackId])
+  @@unique([snapshotId, artistId])
+  @@index([trackId])
+  @@index([artistId])
+}
+
+enum AlbumType {
+  SINGLE
+  EP
+  ALBUM
+  COMPILATION
+}
+
+enum TrackStatus {
+  DRAFT
+  PROCESSING
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AlbumArtistRole {
+  PRIMARY_ARTIST
+  FEATURED_ARTIST
+}
+
+enum CreditRole {
+  PRIMARY_ARTIST
+  FEATURED_ARTIST
+  COMPOSER
+  PRODUCER
+  LYRICIST
+}
+
+enum ChartSubject {
+  TRACK
+  ARTIST
+  COMPOSER
+}
+
+enum ChartPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
 }
