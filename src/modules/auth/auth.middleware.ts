@@ -8,6 +8,9 @@ interface AccessTokenPayload {
 
 const JWT_SECRET = process.env.JWT_SECRET || "default_secret";
 
+const getAccessTokenPayload = (token: string) =>
+  jwt.verify(token, JWT_SECRET) as AccessTokenPayload;
+
 export const requireAuth = (
   req: Request,
   res: Response,
@@ -20,10 +23,28 @@ export const requireAuth = (
   }
 
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as AccessTokenPayload;
+    const payload = getAccessTokenPayload(token);
     res.locals.userId = payload.userId;
     return next();
   } catch {
     return res.status(401).json({ message: "Invalid or expired session" });
   }
+};
+
+export const optionalAuth = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const token = req.cookies?.access_token as string | undefined;
+
+  if (token) {
+    try {
+      res.locals.userId = getAccessTokenPayload(token).userId;
+    } catch {
+      // Public music data remains available when a stale cookie is present.
+    }
+  }
+
+  return next();
 };
