@@ -3,30 +3,24 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "../../core/db.js";
 import { env } from "../../core/env.js";
+import type { LoginInput, RegisterInput } from "./auth.schema.js";
 
 // [POST] ĐĂNG KÝ
 export const register = async (req: Request, res: Response) => {
   try {
-    const { email, password, displayName } = req.body;
+    const { email, password, displayName } = req.body as RegisterInput;
 
-    // 1. Kiểm tra xem người dùng đã điền đủ thông tin chưa
-    if (!email || !password || !displayName) {
-      return res
-        .status(400)
-        .json({ message: "Please provide all required information" });
-    }
-
-    // 2. Kiểm tra xem email đã tồn tại trong DB chưa
+    // 1. Kiểm tra xem email đã tồn tại trong DB chưa
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return res.status(409).json({ message: "This email is already in use" });
     }
 
-    // 3. Mã hóa mật khẩu (Băm 10 vòng)
+    // 2. Mã hóa mật khẩu (Băm 10 vòng)
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // 4. Lưu User mới vào Database
+    // 3. Lưu User mới vào Database
     const newUser = await prisma.user.create({
       data: {
         email,
@@ -57,16 +51,9 @@ export const register = async (req: Request, res: Response) => {
 // [POST] ĐĂNG NHẬP
 export const login = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body as LoginInput;
 
-    // 1. Kiểm tra thông tin đầu vào
-    if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Please enter your email and password" });
-    }
-
-    // 2. Tìm User trong Database
+    // 1. Tìm User trong Database
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user || !user.password) {
       return res
@@ -74,7 +61,7 @@ export const login = async (req: Request, res: Response) => {
         .json({ message: "Incorrect email or password" });
     }
 
-    // 3. So sánh mật khẩu người dùng nhập với mật khẩu đã băm trong DB
+    // 2. So sánh mật khẩu người dùng nhập với mật khẩu đã băm trong DB
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res
@@ -82,14 +69,14 @@ export const login = async (req: Request, res: Response) => {
         .json({ message: "Incorrect email or password" });
     }
 
-    // 4. Tạo JWT Token
+    // 3. Tạo JWT Token
     const token = jwt.sign(
       { userId: user.id, email: user.email }, // Dữ liệu mã hóa bên trong token
       env.JWT_SECRET,
       { expiresIn: "7d" }, // Token sống trong 7 ngày
     );
 
-    // 5. Cài đặt Token vào HttpOnly Cookie để bảo vệ khỏi tấn công XSS
+    // 4. Cài đặt Token vào HttpOnly Cookie để bảo vệ khỏi tấn công XSS
     res.cookie("access_token", token, {
       httpOnly: true, // Frontend (JavaScript) không thể đọc được cookie này
       secure: env.NODE_ENV === "production", // Chỉ gửi qua HTTPS khi trên server thật
