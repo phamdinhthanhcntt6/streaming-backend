@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "../../core/db.js";
-const JWT_SECRET = process.env.JWT_SECRET || "default_secret";
+import { env } from "../../core/env.js";
 
 // [POST] ĐĂNG KÝ
 export const register = async (req: Request, res: Response) => {
@@ -85,14 +85,14 @@ export const login = async (req: Request, res: Response) => {
     // 4. Tạo JWT Token
     const token = jwt.sign(
       { userId: user.id, email: user.email }, // Dữ liệu mã hóa bên trong token
-      JWT_SECRET,
+      env.JWT_SECRET,
       { expiresIn: "7d" }, // Token sống trong 7 ngày
     );
 
     // 5. Cài đặt Token vào HttpOnly Cookie để bảo vệ khỏi tấn công XSS
     res.cookie("access_token", token, {
       httpOnly: true, // Frontend (JavaScript) không thể đọc được cookie này
-      secure: process.env.NODE_ENV === "production", // Chỉ gửi qua HTTPS khi trên server thật
+      secure: env.NODE_ENV === "production", // Chỉ gửi qua HTTPS khi trên server thật
       sameSite: "lax", // Bảo vệ khỏi tấn công CSRF
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày tính bằng mili-giây
     });
@@ -112,7 +112,7 @@ export const logout = (req: Request, res: Response) => {
   // Xóa cookie chứa token
   res.clearCookie("access_token", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: env.NODE_ENV === "production",
     sameSite: "lax",
   });
   res.status(200).json({ message: "Logout successful" });

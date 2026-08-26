@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
-import { cloudinary } from "../../core/cloudinary.js";
+import { cloudinary, isCloudinaryConfigured } from "../../core/cloudinary.js";
 import { prisma } from "../../core/db.js";
+import { env } from "../../core/env.js";
 
 const getCloudinaryUrl = (cloudName: string, path: string) =>
   `https://res.cloudinary.com/${cloudName}${path.startsWith("/") ? path : `/${path}`}`;
@@ -9,7 +10,7 @@ const getFolder = (req: Request) =>
   typeof req.query.folder === "string" ? req.query.folder.trim() : "";
 
 export const getImages = async (_req: Request, res: Response) => {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const cloudName = env.CLOUDINARY_CLOUD_NAME;
   const folder = getFolder(_req);
 
   if (!cloudName) {
@@ -39,14 +40,10 @@ export const getImages = async (_req: Request, res: Response) => {
 };
 
 export const syncImages = async (req: Request, res: Response) => {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const cloudName = env.CLOUDINARY_CLOUD_NAME;
   const folder = getFolder(req);
 
-  if (
-    !cloudName ||
-    !process.env.CLOUDINARY_API_KEY ||
-    !process.env.CLOUDINARY_API_SECRET
-  ) {
+  if (!cloudName || !isCloudinaryConfigured) {
     return res.status(500).json({ message: "Cloudinary is not configured" });
   }
 

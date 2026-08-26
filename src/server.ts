@@ -1,7 +1,7 @@
-import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import { env } from "./core/env.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import musicRoutes from "./modules/music/music.routes.js";
 import imageRoutes from "./modules/image/image.routes.js";
@@ -9,7 +9,7 @@ import imageRoutes from "./modules/image/image.routes.js";
 const app = express();
 
 app.use(cors({
-  origin: process.env.CLIENT_URL || "http://localhost:3000",
+  origin: env.CLIENT_URL,
   credentials: true
 }));
 
@@ -20,8 +20,6 @@ app.use("/api/auth", authRoutes);
 app.use("/api/music", musicRoutes);
 app.use("/api/images", imageRoutes);
 
-const PORT = process.env.PORT || 8000;
-
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+app.listen(env.PORT, () => {
+  console.log(`Server is running on port ${env.PORT}`);
 });

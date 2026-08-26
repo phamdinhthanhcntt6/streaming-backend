@@ -1,15 +1,14 @@
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
+import { env } from "../../core/env.js";
 
 interface AccessTokenPayload {
   userId: string;
   email: string;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || "default_secret";
-
 const getAccessTokenPayload = (token: string) =>
-  jwt.verify(token, JWT_SECRET) as AccessTokenPayload;
+  jwt.verify(token, env.JWT_SECRET) as AccessTokenPayload;
 
 export const requireAuth = (
   req: Request,
