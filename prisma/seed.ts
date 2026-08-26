@@ -138,6 +138,15 @@ function endOfPeriod(start: Date, period: ChartPeriod) {
 }
 
 async function main() {
+  await prisma.image.upsert({
+    where: { path: "/image/upload/v1787154675/banner.png" },
+    update: { folder: "banners" },
+    create: {
+      path: "/image/upload/v1787154675/banner.png",
+      folder: "banners",
+    },
+  });
+
   const pop = await prisma.genre.upsert({
     where: { slug: "pop" },
     update: { name: "Pop" },
@@ -308,7 +317,7 @@ async function main() {
   }
 
   console.log(
-    `Seeded ${artists.length} artists, ${tracks.length} tracks, and ${chartDefinitions.length} charts.`,
+    `Seeded 1 image, ${artists.length} artists, ${tracks.length} tracks, and ${chartDefinitions.length} charts.`,
   );
 }
 

@@ -4,6 +4,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRoutes from "./modules/auth/auth.routes.js";
 import musicRoutes from "./modules/music/music.routes.js";
+import imageRoutes from "./modules/image/image.routes.js";
 
 const app = express();
 
@@ -17,6 +18,7 @@ app.use(cookieParser());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/music", musicRoutes);
+app.use("/api/images", imageRoutes);
 
 const PORT = process.env.PORT || 8000;
 

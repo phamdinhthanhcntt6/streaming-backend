@@ -7,6 +7,14 @@ datasource db {
   provider = "postgresql"
 }
 
+model Image {
+  id     String @id @default(uuid())
+  path   String @unique
+  folder String
+
+  @@index([folder])
+}
+
 model User {
   id             String   @id @default(uuid())
   email          String   @unique
