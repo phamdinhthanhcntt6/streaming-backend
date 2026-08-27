@@ -3,6 +3,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import { env } from "./core/env.js";
 import { errorHandler } from "./core/middlewares/errorHandler.js";
+import { passport } from "./core/passport.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import musicRoutes from "./modules/music/music.routes.js";
 import imageRoutes from "./modules/image/image.routes.js";
@@ -16,6 +17,7 @@ app.use(cors({
 
 app.use(express.json());
 app.use(cookieParser());
+app.use(passport.initialize());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/music", musicRoutes);

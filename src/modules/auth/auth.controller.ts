@@ -1,10 +1,60 @@
-import type { Request, Response } from "express";
+import { randomBytes, timingSafeEqual } from "node:crypto";
+import type { NextFunction, Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "../../core/db.js";
 import { env } from "../../core/env.js";
 import { AppError } from "../../core/errors.js";
+import {
+  googleAuthenticationOptions,
+  passport,
+} from "../../core/passport.js";
 import type { LoginInput, RegisterInput } from "./auth.schema.js";
+
+const ACCESS_TOKEN_COOKIE = "access_token";
+const GOOGLE_OAUTH_STATE_COOKIE = "google_oauth_state";
+const ACCESS_TOKEN_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const OAUTH_STATE_MAX_AGE_MS = 10 * 60 * 1000;
+
+const authCookieOptions = {
+  httpOnly: true,
+  secure: env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+};
+
+const getClientRedirectUrl = (error?: string) => {
+  const url = new URL(error ? "/login" : "/", env.CLIENT_URL);
+
+  if (error) url.searchParams.set("error", error);
+
+  return url.toString();
+};
+
+const setAccessTokenCookie = (
+  res: Response,
+  user: { id: string; email: string },
+) => {
+  const token = jwt.sign(
+    { userId: user.id, email: user.email },
+    env.JWT_SECRET,
+    { expiresIn: "7d" },
+  );
+
+  res.cookie(ACCESS_TOKEN_COOKIE, token, {
+    ...authCookieOptions,
+    maxAge: ACCESS_TOKEN_MAX_AGE_MS,
+  });
+};
+
+const isAuthenticatedUser = (
+  user: unknown,
+): user is { id: string; email: string } =>
+  typeof user === "object" &&
+  user !== null &&
+  "id" in user &&
+  typeof user.id === "string" &&
+  "email" in user &&
+  typeof user.email === "string";
 
 // [POST] ĐĂNG KÝ
 export const register = async (req: Request, res: Response) => {
@@ -55,37 +105,96 @@ export const login = async (req: Request, res: Response) => {
     throw new AppError(401, "Incorrect email or password");
   }
 
-  // 3. Tạo JWT Token
-  const token = jwt.sign(
-    { userId: user.id, email: user.email }, // Dữ liệu mã hóa bên trong token
-    env.JWT_SECRET,
-    { expiresIn: "7d" }, // Token sống trong 7 ngày
-  );
-
-  // 4. Cài đặt Token vào HttpOnly Cookie để bảo vệ khỏi tấn công XSS
-  res.cookie("access_token", token, {
-    httpOnly: true, // Frontend (JavaScript) không thể đọc được cookie này
-    secure: env.NODE_ENV === "production", // Chỉ gửi qua HTTPS khi trên server thật
-    sameSite: "lax", // Bảo vệ khỏi tấn công CSRF
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày tính bằng mili-giây
-  });
+  // 3. Tạo JWT và cài vào HttpOnly cookie
+  setAccessTokenCookie(res, user);
 
   res.status(200).json({
     message: "Login successful",
-    user: { id: user.id, email: user.email, displayName: user.displayName },
+    user: {
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+    },
   });
 };
 
 // [POST] ĐĂNG XUẤT
 export const logout = (req: Request, res: Response) => {
   // Xóa cookie chứa token
-  res.clearCookie("access_token", {
-    httpOnly: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: "lax",
-  });
+  res.clearCookie(ACCESS_TOKEN_COOKIE, authCookieOptions);
   res.status(200).json({ message: "Logout successful" });
 };
+
+// [GET] START GOOGLE OAUTH
+export const startGoogleLogin = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const state = randomBytes(32).toString("hex");
+
+  res.cookie(GOOGLE_OAUTH_STATE_COOKIE, state, {
+    ...authCookieOptions,
+    maxAge: OAUTH_STATE_MAX_AGE_MS,
+  });
+
+  return passport.authenticate("google", {
+    ...googleAuthenticationOptions,
+    state,
+  })(req, res, next);
+};
+
+// [GET] VALIDATE GOOGLE OAUTH CALLBACK STATE
+export const validateGoogleOAuthState = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const receivedState =
+    typeof req.query.state === "string" ? req.query.state : "";
+  const storedState =
+    typeof req.cookies?.[GOOGLE_OAUTH_STATE_COOKIE] === "string"
+      ? (req.cookies[GOOGLE_OAUTH_STATE_COOKIE] as string)
+      : "";
+
+  res.clearCookie(GOOGLE_OAUTH_STATE_COOKIE, authCookieOptions);
+
+  const receivedBuffer = Buffer.from(receivedState);
+  const storedBuffer = Buffer.from(storedState);
+  const isValidState =
+    receivedBuffer.length > 0 &&
+    receivedBuffer.length === storedBuffer.length &&
+    timingSafeEqual(receivedBuffer, storedBuffer);
+
+  if (!isValidState) {
+    return res.redirect(getClientRedirectUrl("invalid_oauth_state"));
+  }
+
+  return next();
+};
+
+// [GET] GOOGLE OAUTH SUCCESS CALLBACK
+export const googleLoginCallback = (req: Request, res: Response) => {
+  if (!isAuthenticatedUser(req.user)) {
+    return res.redirect(getClientRedirectUrl("google_auth_failed"));
+  }
+
+  setAccessTokenCookie(res, req.user);
+
+  return res.redirect(getClientRedirectUrl());
+};
+
+export const googleLoginFailure = (_req: Request, res: Response) =>
+  res.redirect(getClientRedirectUrl("google_auth_failed"));
+
+// Redirect browser-based OAuth errors instead of returning an API JSON error.
+export const googleLoginError = (
+  _error: unknown,
+  _req: Request,
+  res: Response,
+  _next: NextFunction,
+) => res.redirect(getClientRedirectUrl("google_auth_failed"));
 
 // [GET] CURRENT USER
 export const me = async (_req: Request, res: Response) => {
