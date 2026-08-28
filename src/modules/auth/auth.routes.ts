@@ -2,6 +2,7 @@ import { Router } from "express";
 import { validateBody } from "../../core/middlewares/validate.js";
 import { passport } from "../../core/passport.js";
 import {
+  changePassword,
   googleLoginCallback,
   googleLoginError,
   googleLoginFailure,
@@ -13,7 +14,11 @@ import {
   validateGoogleOAuthState,
 } from "./auth.controller.js";
 import { requireAuth } from "./auth.middleware.js";
-import { loginSchema, registerSchema } from "./auth.schema.js";
+import {
+  changePasswordSchema,
+  loginSchema,
+  registerSchema,
+} from "./auth.schema.js";
 
 const router = Router();
 
@@ -33,5 +38,11 @@ router.get(
   googleLoginError,
 );
 router.get("/google/failure", googleLoginFailure);
+router.post(
+  "/change-password",
+  requireAuth,
+  validateBody(changePasswordSchema),
+  changePassword,
+);
 
 export default router;

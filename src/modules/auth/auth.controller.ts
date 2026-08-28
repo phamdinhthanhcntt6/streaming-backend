@@ -1,15 +1,16 @@
-import { randomBytes, timingSafeEqual } from "node:crypto";
-import type { NextFunction, Request, Response } from "express";
 import bcrypt from "bcryptjs";
+import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import { prisma } from "../../core/db.js";
 import { env } from "../../core/env.js";
 import { AppError } from "../../core/errors.js";
-import {
-  googleAuthenticationOptions,
-  passport,
-} from "../../core/passport.js";
-import type { LoginInput, RegisterInput } from "./auth.schema.js";
+import { googleAuthenticationOptions, passport } from "../../core/passport.js";
+import type {
+  ChangePasswordInput,
+  LoginInput,
+  RegisterInput,
+} from "./auth.schema.js";
 
 const ACCESS_TOKEN_COOKIE = "access_token";
 const GOOGLE_OAUTH_STATE_COOKIE = "google_oauth_state";
@@ -115,6 +116,8 @@ export const login = async (req: Request, res: Response) => {
       email: user.email,
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
+      provider: user.provider,
+      hasPassword: Boolean(user.password),
     },
   });
 };
@@ -205,6 +208,8 @@ export const me = async (_req: Request, res: Response) => {
       email: true,
       displayName: true,
       avatarUrl: true,
+      provider: true,
+      password: true,
     },
   });
 
@@ -212,5 +217,72 @@ export const me = async (_req: Request, res: Response) => {
     throw new AppError(401, "User no longer exists");
   }
 
-  return res.status(200).json({ user });
+  const { password, ...safeUser } = user;
+
+  return res.status(200).json({
+    user: {
+      ...safeUser,
+      hasPassword: Boolean(password),
+    },
+  });
+};
+
+// [POST] CHANGE PASSWORD
+export const changePassword = async (req: Request, res: Response) => {
+  const userId = res.locals.userId as string;
+  const { currentPassword, newPassword } = req.body as ChangePasswordInput;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      password: true,
+    },
+  });
+
+  if (!user) {
+    throw new AppError(404, "User not found");
+  }
+
+  const hadPassword = Boolean(user.password);
+
+  if (user.password) {
+    if (!currentPassword) {
+      throw new AppError(400, "Current password is required");
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(
+      currentPassword,
+      user.password,
+    );
+
+    if (!isCurrentPasswordValid) {
+      throw new AppError(400, "Current password is incorrect");
+    }
+
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+
+    if (isSamePassword) {
+      throw new AppError(
+        400,
+        "New password must be different from current password",
+      );
+    }
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      password: hashedPassword,
+    },
+  });
+
+  return res.status(200).json({
+    message: hadPassword
+      ? "Password changed successfully"
+      : "Password set successfully",
+    hasPassword: true,
+  });
 };

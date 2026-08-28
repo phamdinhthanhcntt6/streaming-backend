@@ -20,14 +20,22 @@ const formatMovement = (rank: number, previousRank: number | null) => ({
   change: previousRank === null ? null : Math.abs(previousRank - rank),
 });
 
-const getLatestSnapshot = (chartSlug: string, period: ChartPeriod) =>
+const getLatestSnapshot = (
+  chartSlug: string,
+  period: ChartPeriod,
+  skip = 0,
+  take = 10,
+) =>
   prisma.chartSnapshot.findFirst({
     where: { period, chart: { slug: chartSlug, isActive: true } },
     orderBy: { periodStart: "desc" },
     include: {
       chart: { include: { genre: true } },
+      _count: { select: { entries: true } },
       entries: {
         orderBy: { rank: "asc" },
+        skip,
+        take,
         include: {
           artist: true,
           track: {
@@ -51,16 +59,33 @@ const getLatestSnapshot = (chartSlug: string, period: ChartPeriod) =>
 
 export const getMusicDashboard = async (req: Request, res: Response) => {
   const requestedPeriod = String(req.query.period || ChartPeriod.DAILY).toUpperCase();
+  const requestedPage = Number(req.query.page ?? 1);
+  const requestedLimit = Number(req.query.limit ?? 10);
 
   if (!periods.has(requestedPeriod)) {
     throw new AppError(400, "period must be DAILY, WEEKLY, or MONTHLY");
   }
 
+  if (!Number.isInteger(requestedPage) || requestedPage < 1) {
+    throw new AppError(400, "page must be a positive integer");
+  }
+
+  if (
+    !Number.isInteger(requestedLimit) ||
+    requestedLimit < 1 ||
+    requestedLimit > 50
+  ) {
+    throw new AppError(400, "limit must be an integer between 1 and 50");
+  }
+
   const period = requestedPeriod as ChartPeriod;
+  const page = requestedPage;
+  const limit = requestedLimit;
+  const skip = (page - 1) * limit;
   const [artistChart, composerChart, trendingChart] = await Promise.all([
     getLatestSnapshot("top-artists-pop", period),
     getLatestSnapshot("top-composers-pop", period),
-    getLatestSnapshot("hot-trending-pop", period),
+    getLatestSnapshot("hot-trending-pop", period, skip, limit),
   ]);
 
   const trendingEntries = trendingChart?.entries.filter((entry) => entry.track) ?? [];
@@ -122,6 +147,12 @@ export const getMusicDashboard = async (req: Request, res: Response) => {
         isFavorite: favoriteTrackIds.has(entry.track!.id),
       },
     })),
+    pagination: {
+      page,
+      limit,
+      total: trendingChart?._count.entries ?? 0,
+      totalPages: Math.ceil((trendingChart?._count.entries ?? 0) / limit),
+    },
   });
 };
 

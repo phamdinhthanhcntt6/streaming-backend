@@ -107,6 +107,27 @@ const tracks = [
     artists: ["Sơn Tùng M-TP"],
     composers: ["Rihanna"],
   },
+  {
+    title: "Midnight Echo",
+    slug: "midnight-echo",
+    durationMs: 176_000,
+    artists: ["The Weeknd"],
+    composers: ["Sam Smith"],
+  },
+  {
+    title: "Neon Skyline",
+    slug: "neon-skyline",
+    durationMs: 204_000,
+    artists: ["Hailee Steinfeld"],
+    composers: ["Ariana Grande"],
+  },
+  {
+    title: "Afterglow Dreams",
+    slug: "afterglow-dreams",
+    durationMs: 188_000,
+    artists: ["Rosé"],
+    composers: ["Ed Sheeran"],
+  },
 ] as const;
 
 const rankingArtists = artists.slice(0, 10);
@@ -294,9 +315,9 @@ async function main() {
             snapshotId: snapshot.id,
             trackId: trackIds.get(track.slug)!,
             rank: index + 1,
-            previousRank: [1, 1, null, 1, 1, null, 1][index],
+            previousRank: [1, 1, null, 1, 1, null, 1, 9, 7, null][index],
             peakRank: Math.min(index + 1, index === 1 ? 1 : index + 1),
-            periodsOnChart: 8 - index,
+            periodsOnChart: tracks.length - index,
             score: 100 - index * 8,
           })),
         });
