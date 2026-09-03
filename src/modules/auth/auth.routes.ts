@@ -3,6 +3,7 @@ import { validateBody } from "../../core/middlewares/validate.js";
 import { passport } from "../../core/passport.js";
 import {
   changePassword,
+  deleteAccount,
   googleLoginCallback,
   googleLoginError,
   googleLoginFailure,
@@ -16,6 +17,7 @@ import {
 import { requireAuth } from "./auth.middleware.js";
 import {
   changePasswordSchema,
+  deleteAccountSchema,
   loginSchema,
   registerSchema,
 } from "./auth.schema.js";
@@ -43,6 +45,12 @@ router.post(
   requireAuth,
   validateBody(changePasswordSchema),
   changePassword,
+);
+router.delete(
+  "/delete-account",
+  requireAuth,
+  validateBody(deleteAccountSchema),
+  deleteAccount,
 );
 
 export default router;

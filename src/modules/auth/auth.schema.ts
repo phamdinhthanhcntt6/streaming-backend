@@ -32,6 +32,11 @@ export const changePasswordSchema = z
     path: ["confirmPassword"],
   });
 
+export const deleteAccountSchema = z.object({
+  password: z.string().min(1).optional(),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export type DeleteAccountInput = z.infer<typeof deleteAccountSchema>;

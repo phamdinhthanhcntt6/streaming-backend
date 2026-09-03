@@ -2,12 +2,14 @@ import bcrypt from "bcryptjs";
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { randomBytes, timingSafeEqual } from "node:crypto";
+import { cloudinary } from "../../core/cloudinary.js";
 import { prisma } from "../../core/db.js";
 import { env } from "../../core/env.js";
 import { AppError } from "../../core/errors.js";
 import { googleAuthenticationOptions, passport } from "../../core/passport.js";
 import type {
   ChangePasswordInput,
+  DeleteAccountInput,
   LoginInput,
   RegisterInput,
 } from "./auth.schema.js";
@@ -284,5 +286,49 @@ export const changePassword = async (req: Request, res: Response) => {
       ? "Password changed successfully"
       : "Password set successfully",
     hasPassword: true,
+  });
+};
+
+export const deleteAccount = async (req: Request, res: Response) => {
+  const userId = res.locals.userId as string;
+  const { password } = req.body as DeleteAccountInput;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      password: true,
+      avatarPublicId: true,
+    },
+  });
+
+  if (!user) {
+    throw new AppError(404, "User not found");
+  }
+
+  if (user.password) {
+    if (!password) {
+      throw new AppError(400, "Current password is required");
+    }
+
+    const isValidPassword = await bcrypt.compare(password, user.password);
+
+    if (!isValidPassword) {
+      throw new AppError(400, "Current password is incorrect");
+    }
+  }
+
+  await prisma.user.delete({
+    where: { id: user.id },
+  });
+
+  res.clearCookie(ACCESS_TOKEN_COOKIE, authCookieOptions);
+
+  if (user.avatarPublicId) {
+    void cloudinary.uploader.destroy(user.avatarPublicId).catch(() => {});
+  }
+
+  return res.status(200).json({
+    message: "Account deleted successfully",
   });
 };
