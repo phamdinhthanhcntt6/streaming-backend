@@ -7,6 +7,7 @@ import {
   ChartSubject,
   CreditRole,
   PrismaClient,
+  Role,
   TrackStatus,
 } from "../src/generated/prisma/client.js";
 
@@ -159,6 +160,21 @@ function endOfPeriod(start: Date, period: ChartPeriod) {
 }
 
 async function main() {
+  const adminEmail = process.env.ADMIN_EMAIL?.trim();
+
+  if (adminEmail) {
+    const admin = await prisma.user.updateMany({
+      where: { email: adminEmail },
+      data: { role: Role.ADMIN },
+    });
+
+    console.log(
+      admin.count > 0
+        ? `Promoted ${adminEmail} to ADMIN.`
+        : `ADMIN_EMAIL ${adminEmail} has no account yet; register first, then re-run the seed.`,
+    );
+  }
+
   await prisma.image.upsert({
     where: { path: "/image/upload/v1787154675/banner.png" },
     update: { folder: "banners" },
@@ -233,14 +249,20 @@ async function main() {
           trackId_artistId_role: {
             trackId: track.id,
             artistId,
-            role: position === 0 ? CreditRole.PRIMARY_ARTIST : CreditRole.FEATURED_ARTIST,
+            role:
+              position === 0
+                ? CreditRole.PRIMARY_ARTIST
+                : CreditRole.FEATURED_ARTIST,
           },
         },
         update: { position },
         create: {
           trackId: track.id,
           artistId,
-          role: position === 0 ? CreditRole.PRIMARY_ARTIST : CreditRole.FEATURED_ARTIST,
+          role:
+            position === 0
+              ? CreditRole.PRIMARY_ARTIST
+              : CreditRole.FEATURED_ARTIST,
           position,
         },
       });
@@ -270,9 +292,21 @@ async function main() {
   }
 
   const chartDefinitions = [
-    { name: "Top Artists", slug: "top-artists-pop", subject: ChartSubject.ARTIST },
-    { name: "Top Composers", slug: "top-composers-pop", subject: ChartSubject.COMPOSER },
-    { name: "Hot Trending", slug: "hot-trending-pop", subject: ChartSubject.TRACK },
+    {
+      name: "Top Artists",
+      slug: "top-artists-pop",
+      subject: ChartSubject.ARTIST,
+    },
+    {
+      name: "Top Composers",
+      slug: "top-composers-pop",
+      subject: ChartSubject.COMPOSER,
+    },
+    {
+      name: "Hot Trending",
+      slug: "hot-trending-pop",
+      subject: ChartSubject.TRACK,
+    },
   ] as const;
 
   const now = new Date();
@@ -285,7 +319,11 @@ async function main() {
   for (const definition of chartDefinitions) {
     const chart = await prisma.chart.upsert({
       where: { slug: definition.slug },
-      update: { name: definition.name, subject: definition.subject, genreId: pop.id },
+      update: {
+        name: definition.name,
+        subject: definition.subject,
+        genreId: pop.id,
+      },
       create: { ...definition, genreId: pop.id },
     });
 
@@ -307,7 +345,9 @@ async function main() {
         },
       });
 
-      await prisma.chartEntry.deleteMany({ where: { snapshotId: snapshot.id } });
+      await prisma.chartEntry.deleteMany({
+        where: { snapshotId: snapshot.id },
+      });
 
       if (definition.subject === ChartSubject.TRACK) {
         await prisma.chartEntry.createMany({

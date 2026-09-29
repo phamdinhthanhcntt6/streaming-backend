@@ -17,6 +17,12 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().min(1, "GOOGLE_CLIENT_ID is required"),
   GOOGLE_CLIENT_SECRET: z.string().min(1, "GOOGLE_CLIENT_SECRET is required"),
   GOOGLE_CALLBACK_URL: z.url("GOOGLE_CALLBACK_URL must be a valid URL"),
+  // Optional: the account promoted to ADMIN by the seed script.
+  ADMIN_EMAIL: z.preprocess(
+    (value) =>
+      typeof value === "string" && value.trim() === "" ? undefined : value,
+    z.email("ADMIN_EMAIL must be a valid email").optional(),
+  ),
 });
 
 const parsed = envSchema.safeParse(process.env);

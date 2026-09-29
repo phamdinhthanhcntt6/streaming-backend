@@ -1,6 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../../core/env.js";
+import { prisma } from "../../core/db.js";
+import { Role } from "../../generated/prisma/client.js";
 
 interface AccessTokenPayload {
   userId: string;
@@ -47,3 +49,28 @@ export const optionalAuth = (
 
   return next();
 };
+
+/// Reads the role from the database instead of the JWT so that revoking an
+/// admin takes effect immediately, rather than when the cookie expires.
+/// Must run after requireAuth.
+export const requireRole =
+  (...roles: Role[]) =>
+  async (_req: Request, res: Response, next: NextFunction) => {
+    const userId = res.locals.userId as string | undefined;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (!user || !roles.includes(user.role)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    res.locals.role = user.role;
+    return next();
+  };

@@ -24,29 +24,39 @@ model User {
   providerId     String?
   avatarUrl      String?
   avatarPublicId String?
+  role           Role     @default(USER)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  favoriteTracks FavoriteTrack[]
-  playHistory    PlayHistory[]
+  favoriteTracks        FavoriteTrack[]
+  playHistory           PlayHistory[]
+  artist                Artist?
+  verificationRequests  ArtistVerificationRequest[] @relation("VerificationRequester")
+  reviewedVerifications ArtistVerificationRequest[] @relation("VerificationReviewer")
 }
 
 /// A person or group that can perform, compose, produce, or write a track.
 model Artist {
-  id             String   @id @default(uuid())
+  id             String    @id @default(uuid())
   name           String
-  slug           String   @unique
+  slug           String    @unique
   bio            String?
   avatarUrl      String?
   avatarPublicId String?
   countryCode    String?
-  isVerified     Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  isVerified     Boolean   @default(false)
+  /// Set when a verification request is approved; distinguishes a catalog
+  /// artist nobody manages yet from one an account has claimed.
+  userId         String?   @unique
+  claimedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  trackCredits TrackCredit[]
-  albums       AlbumArtist[]
-  chartEntries ChartEntry[]
+  user                 User?                       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  trackCredits         TrackCredit[]
+  albums               AlbumArtist[]
+  chartEntries         ChartEntry[]
+  verificationRequests ArtistVerificationRequest[]
 
   @@index([name])
 }
@@ -237,6 +247,46 @@ model ChartEntry {
   @@unique([snapshotId, artistId])
   @@index([trackId])
   @@index([artistId])
+}
+
+/// One application from a user asking to manage an Artist profile.
+/// A partial unique index (see migration) allows only one PENDING row per user.
+model ArtistVerificationRequest {
+  id             String             @id @default(uuid())
+  userId         String
+  artistName     String
+  links          String[]
+  /// Set when the requested name matches a catalog artist, making this a claim.
+  /// Null means approving the request creates a new Artist instead.
+  targetArtistId String?
+  status         VerificationStatus @default(PENDING)
+  reviewedById   String?
+  reviewedAt     DateTime?
+  reviewNote     String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  user         User    @relation("VerificationRequester", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy   User?   @relation("VerificationReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  targetArtist Artist? @relation(fields: [targetArtistId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@index([targetArtistId])
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+/// System permission level. Being an artist is not a role: it is derived from
+/// owning an Artist profile, so the two can never drift out of sync.
+enum Role {
+  USER
+  ADMIN
 }
 
 enum AlbumType {

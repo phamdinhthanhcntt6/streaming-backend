@@ -212,6 +212,10 @@ export const me = async (_req: Request, res: Response) => {
       avatarUrl: true,
       provider: true,
       password: true,
+      role: true,
+      artist: {
+        select: { id: true, slug: true, name: true, isVerified: true },
+      },
     },
   });
 
