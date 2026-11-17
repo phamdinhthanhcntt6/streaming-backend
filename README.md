@@ -12,7 +12,7 @@ Backend API cho dự án Streaming Web phục vụ mục đích học tập.
 
 ## Yêu cầu
 
-- Node.js và npm
+- Node.js và Yarn (1.x)
 - PostgreSQL đang chạy
 - Một database PostgreSQL dành cho dự án
 
@@ -21,7 +21,7 @@ Backend API cho dự án Streaming Web phục vụ mục đích học tập.
 Từ thư mục `streaming-backend`:
 
 ```bash
-npm install
+yarn install
 ```
 
 Tạo file `.env`:
@@ -49,7 +49,7 @@ Không commit file `.env` hoặc thông tin đăng nhập database lên Git.
 Chạy development server và tự reload khi source thay đổi:
 
 ```bash
-npm run dev
+yarn dev
 ```
 
 Mặc định API chạy tại `http://localhost:8000`.
@@ -57,7 +57,7 @@ Mặc định API chạy tại `http://localhost:8000`.
 Build production:
 
 ```bash
-npm run build
+yarn build
 ```
 
 Lệnh build sẽ chạy `prisma generate` trước, sau đó biên dịch TypeScript vào thư mục `dist`.
@@ -65,20 +65,20 @@ Lệnh build sẽ chạy `prisma generate` trước, sau đó biên dịch TypeS
 Chạy bản production đã build:
 
 ```bash
-npm start
+yarn start
 ```
 
 Kiểm tra source:
 
 ```bash
-npm run typecheck
-npm run lint
+yarn typecheck
+yarn lint
 ```
 
 Tự động sửa các lỗi lint có thể sửa được:
 
 ```bash
-npm run lint:fix
+yarn lint:fix
 ```
 
 ## Prisma
@@ -87,22 +87,22 @@ Prisma đọc kết nối database từ `DATABASE_URL` trong `.env`. Schema nằ
 
 ### Các lệnh thường dùng
 
-| Mục đích | Lệnh |
-| --- | --- |
-| Generate Prisma Client | `npx prisma generate` |
-| Kiểm tra schema hợp lệ | `npx prisma validate` |
-| Format file schema | `npx prisma format` |
-| Xem phiên bản Prisma | `npx prisma version` |
-| Xem trạng thái migration | `npx prisma migrate status` |
-| Mở giao diện xem dữ liệu | `npx prisma studio` |
-| Mở Studio tại port khác | `npx prisma studio --port 5556` |
+| Mục đích                 | Lệnh                             |
+| ------------------------ | -------------------------------- |
+| Generate Prisma Client   | `yarn prisma generate`           |
+| Kiểm tra schema hợp lệ   | `yarn prisma validate`           |
+| Format file schema       | `yarn prisma format`             |
+| Xem phiên bản Prisma     | `yarn prisma version`            |
+| Xem trạng thái migration | `yarn prisma migrate status`     |
+| Mở giao diện xem dữ liệu | `yarn prisma studio`             |
+| Mở Studio tại port khác  | `yarn prisma studio --port 5556` |
 
 ### Xem, thêm, sửa và xóa dữ liệu
 
 Chạy:
 
 ```bash
-npx prisma studio
+yarn prisma studio
 ```
 
 Prisma Studio mặc định mở tại `http://localhost:5555`. Trong giao diện này có thể:
@@ -116,7 +116,7 @@ Prisma Studio mặc định mở tại `http://localhost:5555`. Trong giao diệ
 Nếu không muốn Prisma tự mở trình duyệt:
 
 ```bash
-npx prisma studio --browser none
+yarn prisma studio --browser none
 ```
 
 ### Tạo migration khi thay đổi schema
@@ -133,15 +133,15 @@ model User {
 Tạo và áp dụng migration trong môi trường development:
 
 ```bash
-npx prisma migrate dev --name add_user_bio
+yarn prisma migrate dev --name add_user_bio
 ```
 
 Tên migration nên dùng chữ thường và dấu gạch dưới, ví dụ:
 
 ```bash
-npx prisma migrate dev --name create_track
-npx prisma migrate dev --name add_playlist
-npx prisma migrate dev --name add_user_avatar
+yarn prisma migrate dev --name create_track
+yarn prisma migrate dev --name add_playlist
+yarn prisma migrate dev --name add_user_avatar
 ```
 
 `migrate dev` sẽ:
@@ -154,13 +154,13 @@ npx prisma migrate dev --name add_user_avatar
 Chỉ tạo file migration để kiểm tra/chỉnh SQL, chưa áp dụng vào database:
 
 ```bash
-npx prisma migrate dev --name add_track --create-only
+yarn prisma migrate dev --name add_track --create-only
 ```
 
 Sau khi kiểm tra file SQL, áp dụng migration bằng:
 
 ```bash
-npx prisma migrate dev
+yarn prisma migrate dev
 ```
 
 Không sửa migration đã được áp dụng và chia sẻ cho người khác. Nếu schema cần thay đổi tiếp, hãy tạo migration mới.
@@ -168,7 +168,7 @@ Không sửa migration đã được áp dụng và chia sẻ cho người khác
 ### Áp dụng migration ở production hoặc staging
 
 ```bash
-npx prisma migrate deploy
+yarn prisma migrate deploy
 ```
 
 `migrate deploy` chỉ áp dụng các migration đang chờ; nó không tự tạo migration mới. Không dùng `migrate dev` trên production.
@@ -176,7 +176,7 @@ npx prisma migrate deploy
 ### Reset database development
 
 ```bash
-npx prisma migrate reset
+yarn prisma migrate reset
 ```
 
 > **Cảnh báo:** lệnh này xóa toàn bộ dữ liệu, tạo lại database schema và chạy lại tất cả migration. Chỉ dùng cho database development khi chắc chắn không cần giữ dữ liệu.
@@ -184,7 +184,7 @@ npx prisma migrate reset
 ### Đồng bộ schema nhanh không tạo migration
 
 ```bash
-npx prisma db push
+yarn prisma db push
 ```
 
 `db push` phù hợp khi thử nghiệm schema nhanh hoặc làm prototype. Lệnh này không tạo lịch sử migration, vì vậy khi tính năng đã ổn định nên dùng `prisma migrate dev`.
@@ -194,8 +194,8 @@ Không nên trộn `db push` và migration tùy tiện trên cùng database vì 
 ### Lấy schema từ database có sẵn
 
 ```bash
-npx prisma db pull
-npx prisma generate
+yarn prisma db pull
+yarn prisma generate
 ```
 
 > **Lưu ý:** `db pull` cập nhật `prisma/schema.prisma` dựa trên database hiện tại. Nên commit hoặc sao lưu thay đổi schema trước khi chạy.
@@ -205,8 +205,8 @@ npx prisma generate
 Dự án có seed tại `prisma/seed.ts`. Chạy bằng một trong hai lệnh:
 
 ```bash
-npx prisma db seed
-npm run seed
+yarn prisma db seed
+yarn seed
 ```
 
 Seed dùng `upsert` nên có thể chạy lại mà không tạo trùng nghệ sĩ, bài hát, thể loại hoặc bảng xếp hạng. Các `audioUrl` là đường dẫn placeholder; cần bổ sung file demo hợp pháp trước khi phát nhạc.
@@ -216,43 +216,43 @@ Seed dùng `upsert` nên có thể chạy lại mà không tạo trùng nghệ s
 ```text
 Sửa prisma/schema.prisma
         ↓
-npx prisma format
+yarn prisma format
         ↓
-npx prisma validate
+yarn prisma validate
         ↓
-npx prisma migrate dev --name ten_thay_doi
+yarn prisma migrate dev --name ten_thay_doi
         ↓
-npm run typecheck
+yarn typecheck
         ↓
-Kiểm tra dữ liệu bằng npx prisma studio
+Kiểm tra dữ liệu bằng yarn prisma studio
 ```
 
 Khi pull code có migration mới từ Git:
 
 ```bash
-npm install
-npx prisma migrate dev
-npx prisma generate
-npm run dev
+yarn install
+yarn prisma migrate dev
+yarn prisma generate
+yarn dev
 ```
 
 Khi deploy production:
 
 ```bash
-npm install
-npx prisma migrate deploy
-npm run build
-npm start
+yarn install
+yarn prisma migrate deploy
+yarn build
+yarn start
 ```
 
 ## API xác thực hiện tại
 
-| Method | Endpoint | Mô tả |
-| --- | --- | --- |
-| `POST` | `/api/auth/register` | Đăng ký tài khoản |
-| `POST` | `/api/auth/login` | Đăng nhập và tạo HttpOnly cookie |
-| `POST` | `/api/auth/logout` | Xóa cookie đăng nhập |
-| `GET` | `/api/auth/me` | Xác minh cookie và trả người dùng hiện tại |
+| Method | Endpoint             | Mô tả                                      |
+| ------ | -------------------- | ------------------------------------------ |
+| `POST` | `/api/auth/register` | Đăng ký tài khoản                          |
+| `POST` | `/api/auth/login`    | Đăng nhập và tạo HttpOnly cookie           |
+| `POST` | `/api/auth/logout`   | Xóa cookie đăng nhập                       |
+| `GET`  | `/api/auth/me`       | Xác minh cookie và trả người dùng hiện tại |
 
 Frontend phải gửi request với credentials để trình duyệt gửi cookie:
 
@@ -289,7 +289,7 @@ Kiểm tra PostgreSQL đang chạy và `DATABASE_URL` trong `.env` đúng userna
 ### Prisma Client chưa được generate
 
 ```bash
-npx prisma generate
+yarn prisma generate
 ```
 
 ### Migration và database không đồng bộ
@@ -297,14 +297,14 @@ npx prisma generate
 Kiểm tra trước bằng:
 
 ```bash
-npx prisma migrate status
+yarn prisma migrate status
 ```
 
-Với database development có thể bỏ toàn bộ dữ liệu, dùng `npx prisma migrate reset`. Với production, không reset; cần kiểm tra migration lỗi và xử lý bằng `prisma migrate resolve` theo đúng trạng thái thực tế.
+Với database development có thể bỏ toàn bộ dữ liệu, dùng `yarn prisma migrate reset`. Với production, không reset; cần kiểm tra migration lỗi và xử lý bằng `prisma migrate resolve` theo đúng trạng thái thực tế.
 
 ### Thay đổi schema nhưng TypeScript chưa nhận type mới
 
 ```bash
-npx prisma generate
-npm run typecheck
+yarn prisma generate
+yarn typecheck
 ```
