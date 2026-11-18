@@ -37,6 +37,25 @@ const artists = [
   "Japan",
   "David Sylvian",
   "Donna Summer",
+  // League of Legends — để cuối để không đổi top 10 của chart nghệ sĩ / nhạc sĩ.
+  "League of Legends",
+  "Against The Current",
+  "The Glitch Mob",
+  "Mako",
+  "The Word Alive",
+  "K/DA",
+  "Madison Beer",
+  "(G)I-DLE",
+  "Jaira Burns",
+  "Lexie Liu",
+  "Seraphine",
+  "Imagine Dragons",
+  "J.I.D",
+  "Cailin Russo",
+  "Chrissy Costanza",
+  "NewJeans",
+  "Linkin Park",
+  "Valerie Broussard",
 ] as const;
 
 const artistSlugByName = new Map<string, string>([
@@ -56,9 +75,126 @@ const artistSlugByName = new Map<string, string>([
   ["Japan", "japan"],
   ["David Sylvian", "david-sylvian"],
   ["Donna Summer", "donna-summer"],
+  ["League of Legends", "league-of-legends"],
+  ["Against The Current", "against-the-current"],
+  ["The Glitch Mob", "the-glitch-mob"],
+  ["Mako", "mako"],
+  ["The Word Alive", "the-word-alive"],
+  ["K/DA", "k-da"],
+  ["Madison Beer", "madison-beer"],
+  ["(G)I-DLE", "gi-dle"],
+  ["Jaira Burns", "jaira-burns"],
+  ["Lexie Liu", "lexie-liu"],
+  ["Seraphine", "seraphine"],
+  ["Imagine Dragons", "imagine-dragons"],
+  ["J.I.D", "jid"],
+  ["Cailin Russo", "cailin-russo"],
+  ["Chrissy Costanza", "chrissy-costanza"],
+  ["NewJeans", "newjeans"],
+  ["Linkin Park", "linkin-park"],
+  ["Valerie Broussard", "valerie-broussard"],
 ]);
 
-const tracks = [
+type SeedTrack = {
+  title: string;
+  slug: string;
+  durationMs: number;
+  artists: readonly string[];
+  composers: readonly string[];
+  /** Có thì phát qua YouTube; không thì dùng file demo `/media/demo/<slug>.mp3`. */
+  youtubeId?: string;
+};
+
+// Bài LoL đứng đầu mảng => chiếm top 10 chart "Hot Trending" trên dashboard.
+// youtubeId lấy từ kênh chính thức, durationMs = độ dài video.
+const tracks: SeedTrack[] = [
+  {
+    title: "Legends Never Die",
+    slug: "legends-never-die",
+    durationMs: 179_000,
+    artists: ["League of Legends", "Against The Current"],
+    composers: ["League of Legends"],
+    youtubeId: "r6zIGXun57U",
+  },
+  {
+    title: "RISE",
+    slug: "rise",
+    durationMs: 210_000,
+    artists: ["League of Legends", "The Glitch Mob", "Mako", "The Word Alive"],
+    composers: ["League of Legends"],
+    youtubeId: "fB8TyLTD7EE",
+  },
+  {
+    title: "POP/STARS",
+    slug: "pop-stars",
+    durationMs: 203_000,
+    artists: ["K/DA", "Madison Beer", "(G)I-DLE", "Jaira Burns"],
+    composers: ["League of Legends"],
+    youtubeId: "UOxkGD8qRB4",
+  },
+  {
+    title: "Enemy",
+    slug: "enemy",
+    durationMs: 213_000,
+    artists: ["Imagine Dragons", "J.I.D"],
+    composers: ["Imagine Dragons"],
+    youtubeId: "D9G1VOjN_84",
+  },
+  {
+    title: "Phoenix",
+    slug: "phoenix",
+    durationMs: 208_000,
+    artists: ["League of Legends", "Cailin Russo", "Chrissy Costanza"],
+    composers: ["League of Legends"],
+    youtubeId: "i1IKnWDecwA",
+  },
+  {
+    title: "GODS",
+    slug: "gods",
+    durationMs: 255_000,
+    artists: ["League of Legends", "NewJeans"],
+    composers: ["League of Legends"],
+    youtubeId: "C3GouGa0noM",
+  },
+  {
+    title: "Warriors",
+    slug: "warriors",
+    durationMs: 170_000,
+    artists: ["Imagine Dragons"],
+    composers: ["Imagine Dragons"],
+    youtubeId: "fmI_Ndrxy14",
+  },
+  {
+    title: "MORE",
+    slug: "more",
+    durationMs: 231_000,
+    artists: [
+      "K/DA",
+      "Madison Beer",
+      "(G)I-DLE",
+      "Lexie Liu",
+      "Jaira Burns",
+      "Seraphine",
+    ],
+    composers: ["League of Legends"],
+    youtubeId: "3VTkBuxU4yk",
+  },
+  {
+    title: "Heavy Is The Crown",
+    slug: "heavy-is-the-crown",
+    durationMs: 226_000,
+    artists: ["Linkin Park"],
+    composers: ["Linkin Park"],
+    youtubeId: "5FrhtahQiRc",
+  },
+  {
+    title: "Awaken",
+    slug: "awaken",
+    durationMs: 208_000,
+    artists: ["League of Legends", "Valerie Broussard"],
+    composers: ["League of Legends"],
+    youtubeId: "zF5Ddo9JdpY",
+  },
   {
     title: "Run now",
     slug: "run-now",
@@ -129,7 +265,7 @@ const tracks = [
     artists: ["Rosé"],
     composers: ["Ed Sheeran"],
   },
-] as const;
+];
 
 const rankingArtists = artists.slice(0, 10);
 
@@ -213,19 +349,28 @@ async function main() {
   const trackIds = new Map<string, string>();
 
   for (const [trackIndex, item] of tracks.entries()) {
+    const audioUrl = item.youtubeId
+      ? `https://www.youtube.com/watch?v=${item.youtubeId}`
+      : `/media/demo/${item.slug}.mp3`;
+    const coverUrl = item.youtubeId
+      ? `https://i.ytimg.com/vi/${item.youtubeId}/hqdefault.jpg`
+      : `https://api.dicebear.com/9.x/shapes/svg?seed=${encodeURIComponent(item.slug)}`;
+
     const track = await prisma.track.upsert({
       where: { slug: item.slug },
       update: {
         title: item.title,
         durationMs: item.durationMs,
+        audioUrl,
+        coverUrl,
         status: TrackStatus.PUBLISHED,
       },
       create: {
         title: item.title,
         slug: item.slug,
         durationMs: item.durationMs,
-        audioUrl: `/media/demo/${item.slug}.mp3`,
-        coverUrl: `https://api.dicebear.com/9.x/shapes/svg?seed=${encodeURIComponent(item.slug)}`,
+        audioUrl,
+        coverUrl,
         releaseDate: new Date(2026, 6, trackIndex + 1),
         status: TrackStatus.PUBLISHED,
         playCount: (tracks.length - trackIndex) * 12_500,
@@ -355,7 +500,8 @@ async function main() {
             snapshotId: snapshot.id,
             trackId: trackIds.get(track.slug)!,
             rank: index + 1,
-            previousRank: [1, 1, null, 1, 1, null, 1, 9, 7, null][index],
+            previousRank:
+              [1, 1, null, 1, 1, null, 1, 9, 7, null][index] ?? null,
             peakRank: Math.min(index + 1, index === 1 ? 1 : index + 1),
             periodsOnChart: tracks.length - index,
             score: 100 - index * 8,
