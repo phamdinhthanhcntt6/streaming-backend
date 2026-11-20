@@ -4,7 +4,10 @@ import { AppError } from "../../core/errors.js";
 import {
   ChartPeriod,
   CreditRole,
+  Prisma,
 } from "../../generated/prisma/client.js";
+import { recordPlay } from "./music.service.js";
+import type { RecordPlayInput } from "./music.schema.js";
 
 const periods = new Set<string>(Object.values(ChartPeriod));
 
@@ -58,7 +61,9 @@ const getLatestSnapshot = (
   });
 
 export const getMusicDashboard = async (req: Request, res: Response) => {
-  const requestedPeriod = String(req.query.period || ChartPeriod.DAILY).toUpperCase();
+  const requestedPeriod = String(
+    req.query.period || ChartPeriod.DAILY,
+  ).toUpperCase();
   const requestedPage = Number(req.query.page ?? 1);
   const requestedLimit = Number(req.query.limit ?? 10);
 
@@ -88,7 +93,8 @@ export const getMusicDashboard = async (req: Request, res: Response) => {
     getLatestSnapshot("hot-trending-pop", period, skip, limit),
   ]);
 
-  const trendingEntries = trendingChart?.entries.filter((entry) => entry.track) ?? [];
+  const trendingEntries =
+    trendingChart?.entries.filter((entry) => entry.track) ?? [];
   const userId = res.locals.userId as string | undefined;
   const favoriteTrackIds = userId
     ? new Set(
@@ -158,7 +164,8 @@ export const getMusicDashboard = async (req: Request, res: Response) => {
 
 export const addFavoriteTrack = async (req: Request, res: Response) => {
   const userId = res.locals.userId as string;
-  const trackId = typeof req.params.trackId === "string" ? req.params.trackId : undefined;
+  const trackId =
+    typeof req.params.trackId === "string" ? req.params.trackId : undefined;
 
   if (!trackId) throw new AppError(400, "trackId is required");
 
@@ -176,7 +183,8 @@ export const addFavoriteTrack = async (req: Request, res: Response) => {
 };
 
 export const removeFavoriteTrack = async (req: Request, res: Response) => {
-  const trackId = typeof req.params.trackId === "string" ? req.params.trackId : undefined;
+  const trackId =
+    typeof req.params.trackId === "string" ? req.params.trackId : undefined;
 
   if (!trackId) throw new AppError(400, "trackId is required");
 
@@ -188,4 +196,28 @@ export const removeFavoriteTrack = async (req: Request, res: Response) => {
   });
 
   return res.status(200).json({ message: "Track removed from favorites" });
+};
+
+const isRecordNotFound = (error: unknown) =>
+  error instanceof Prisma.PrismaClientKnownRequestError &&
+  error.code === "P2025"; // Record not found
+
+export const recordTrackPlay = async (req: Request, res: Response) => {
+  const userId = (res.locals.userId as string | undefined) ?? null;
+
+  const trackId =
+    typeof req.params.trackId === "string" ? req.params.trackId : undefined;
+
+  if (!trackId) throw new AppError(400, "trackId is required");
+
+  try {
+    const play = await recordPlay(userId, trackId, req.body as RecordPlayInput);
+
+    return res.status(201).json(play);
+  } catch (error) {
+    if (isRecordNotFound(error)) {
+      throw new AppError(404, "Track not found");
+    }
+    throw error;
+  }
 };
